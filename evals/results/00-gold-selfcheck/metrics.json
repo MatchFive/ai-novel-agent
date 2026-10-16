@@ -1,0 +1,94 @@
+{
+  "config": {
+    "provider": "gold",
+    "strategy": "single",
+    "model": "gpt-4o-mini",
+    "verify_model": null,
+    "base_url": "https://api.openai.com/v1",
+    "api_key": null,
+    "temperature": 0.1,
+    "repeat": 3,
+    "drop": 0.25,
+    "noise": 0.35,
+    "type_error": 0.2,
+    "seed": 7,
+    "tag": "00-gold-selfcheck"
+  },
+  "stats": {},
+  "metrics": {
+    "cases": 20,
+    "gold_total": 15,
+    "pred_total": 15,
+    "tp": 15,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "must_detect_recall": 1.0,
+    "weighted_recall": 1.0,
+    "type_accuracy": 1.0,
+    "clean_cases": 5,
+    "clean_false_positives": 0,
+    "clean_fp_rate": 0.0,
+    "clean_fp_ratio": 0.0,
+    "per_type": {
+      "timeline": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "setting": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "character": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "memory_conflict": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "knowledge_leak": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "promise_break": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 2,
+        "type_ok": 2,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      },
+      "ai_flavor": {
+        "gold": 3,
+        "hit": 3,
+        "reported": 3,
+        "type_ok": 3,
+        "recall": 1.0,
+        "type_accuracy": 1.0
+      }
+    }
+  }
+}

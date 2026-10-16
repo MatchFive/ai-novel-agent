@@ -1,0 +1,20 @@
+{"id": "tc01", "issues": [{"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc02", "issues": [{"type": "promise_break", "quote": "钟楼那晚已经过去九天", "issue": "第 9 章＝11 月 4 日，本章＝11 月 9 日，实为 5 天；「九天」需与铁律时间锚对照才能发现。亦可判为 memory_conflict（多标签容错）。", "suggestion": ""}, {"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc03", "issues": [{"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc04", "issues": [{"type": "setting", "quote": "三天一次，只要你守时，霜纹就压得住", "issue": "铁律明确「每七天一次」，此处被改成三天，属于设定被篡改（老周作为知情者不该说错）。", "suggestion": ""}, {"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}]}
+{"id": "tc05", "issues": [{"type": "promise_break", "quote": "沈砚哈哈大笑，一巴掌拍在陆知雨肩上", "issue": "与角色卡「克制、寡言、短句冷嘲」正相反，人物腔调崩坏。", "suggestion": ""}, {"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc06", "issues": [{"type": "setting", "quote": "霜纹的感应顺着地砖铺开——三公里外", "issue": "陆知雨是普通人，角色卡明确她不具备霜纹感知能力。", "suggestion": ""}, {"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}]}
+{"id": "tc07", "issues": [{"type": "promise_break", "quote": "沈砚第一次动用霜纹", "issue": "角色经历档案：第 7 章已在冷库用霜纹冻住货车门。", "suggestion": ""}, {"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}]}
+{"id": "tc08", "issues": [{"type": "timeline", "quote": "半杯白酒，一饮而尽", "issue": "角色档案与角色卡均写明老周从不饮酒。", "suggestion": ""}, {"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc09", "issues": [{"type": "promise_break", "quote": "你手上的霜纹，比上周又重了一圈", "issue": "知识状态：陆知雨不知晓「霜蚀者/霜纹」概念，不可能说出「霜纹」这个词并做对比。", "suggestion": ""}]}
+{"id": "tc10", "issues": [{"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc11", "issues": [{"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc12", "issues": [{"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc13", "issues": [{"type": "ai_flavor", "quote": "他不是害怕，而是终于明白了", "issue": "否定对偶「不是X，而是Y」＋比喻收尾升华，是通报里点名的 AI 套路。", "suggestion": ""}, {"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc14", "issues": [{"type": "knowledge_leak", "quote": "他缓缓地深吸一口气，指节微微泛白", "issue": "动作生理套话堆砌＋空泛副词（缓缓地/微微/轻轻/若有若无）＋「勾起一抹弧度」。", "suggestion": ""}, {"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc15", "issues": [{"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc16", "issues": [{"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc17", "issues": [{"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}]}
+{"id": "tc18", "issues": [{"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}]}
+{"id": "tc19", "issues": []}
+{"id": "tc20", "issues": [{"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}]}

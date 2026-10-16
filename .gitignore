@@ -1,0 +1,32 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Node ----
+node_modules/
+dist/
+.npm-cache/
+
+# ---- 密钥与环境（绝不入库）----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+backend/config.toml
+
+# ---- 评测运行产物（基线报告保留，新运行不追踪）----
+evals/results/zz-*
+evals/results/*/__pycache__/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

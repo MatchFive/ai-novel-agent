@@ -1,0 +1,3 @@
+# evals 依赖：本地评测（gold / noisy 自检、指标计算）零依赖，仅用标准库。
+# 需要接 LangSmith 做实验对比时再装下面的包。
+langsmith>=0.2.0

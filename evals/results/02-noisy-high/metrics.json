@@ -1,0 +1,94 @@
+{
+  "config": {
+    "provider": "noisy",
+    "strategy": "single",
+    "model": "gpt-4o-mini",
+    "verify_model": null,
+    "base_url": "https://api.openai.com/v1",
+    "api_key": null,
+    "temperature": 0.1,
+    "repeat": 3,
+    "drop": 0.4,
+    "noise": 0.7,
+    "type_error": 0.35,
+    "seed": 7,
+    "tag": "02-noisy-high"
+  },
+  "stats": {},
+  "metrics": {
+    "cases": 20,
+    "gold_total": 15,
+    "pred_total": 33,
+    "tp": 9,
+    "fp": 24,
+    "fn": 6,
+    "precision": 0.2727,
+    "recall": 0.6,
+    "f1": 0.375,
+    "must_detect_recall": 0.6429,
+    "weighted_recall": 0.6176,
+    "type_accuracy": 0.2222,
+    "clean_cases": 5,
+    "clean_false_positives": 4,
+    "clean_fp_rate": 0.8,
+    "clean_fp_ratio": 1.0,
+    "per_type": {
+      "timeline": {
+        "gold": 2,
+        "hit": 1,
+        "reported": 7,
+        "type_ok": 0,
+        "recall": 0.5,
+        "type_accuracy": 0.0
+      },
+      "setting": {
+        "gold": 2,
+        "hit": 1,
+        "reported": 9,
+        "type_ok": 1,
+        "recall": 0.5,
+        "type_accuracy": 1.0
+      },
+      "character": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 5,
+        "type_ok": 0,
+        "recall": 1.0,
+        "type_accuracy": 0.0
+      },
+      "memory_conflict": {
+        "gold": 2,
+        "hit": 2,
+        "reported": 0,
+        "type_ok": 0,
+        "recall": 1.0,
+        "type_accuracy": 0.0
+      },
+      "knowledge_leak": {
+        "gold": 2,
+        "hit": 1,
+        "reported": 1,
+        "type_ok": 0,
+        "recall": 0.5,
+        "type_accuracy": 0.0
+      },
+      "promise_break": {
+        "gold": 2,
+        "hit": 0,
+        "reported": 4,
+        "type_ok": 0,
+        "recall": 0.0,
+        "type_accuracy": 0.0
+      },
+      "ai_flavor": {
+        "gold": 3,
+        "hit": 2,
+        "reported": 7,
+        "type_ok": 1,
+        "recall": 0.6667,
+        "type_accuracy": 0.5
+      }
+    }
+  }
+}

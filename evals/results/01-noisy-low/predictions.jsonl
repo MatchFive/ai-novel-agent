@@ -1,0 +1,20 @@
+{"id": "tc01", "issues": [{"type": "ai_flavor", "quote": "正午的阳光把霜城的屋顶照得发白", "issue": "同章内时间自相矛盾：前文「傍晚六点，天色已经黑透」，后文却是正午的阳光。", "suggestion": ""}, {"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}]}
+{"id": "tc02", "issues": [{"type": "timeline", "quote": "钟楼那晚已经过去九天", "issue": "第 9 章＝11 月 4 日，本章＝11 月 9 日，实为 5 天；「九天」需与铁律时间锚对照才能发现。亦可判为 memory_conflict（多标签容错）。", "suggestion": ""}]}
+{"id": "tc03", "issues": [{"type": "setting", "quote": "攥住生锈的铁门闩，掌心的霜纹骤然亮起", "issue": "违反铁律：铁器引霜纹逆流剧痛，持铁状态下无法施术，更不可能冻裂铁门。", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc04", "issues": [{"type": "setting", "quote": "三天一次，只要你守时，霜纹就压得住", "issue": "铁律明确「每七天一次」，此处被改成三天，属于设定被篡改（老周作为知情者不该说错）。", "suggestion": ""}]}
+{"id": "tc05", "issues": [{"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc06", "issues": [{"type": "character", "quote": "霜纹的感应顺着地砖铺开——三公里外", "issue": "陆知雨是普通人，角色卡明确她不具备霜纹感知能力。", "suggestion": ""}, {"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc07", "issues": []}
+{"id": "tc08", "issues": [{"type": "memory_conflict", "quote": "半杯白酒，一饮而尽", "issue": "角色档案与角色卡均写明老周从不饮酒。", "suggestion": ""}]}
+{"id": "tc09", "issues": [{"type": "timeline", "quote": "你手上的霜纹，比上周又重了一圈", "issue": "知识状态：陆知雨不知晓「霜蚀者/霜纹」概念，不可能说出「霜纹」这个词并做对比。", "suggestion": ""}]}
+{"id": "tc10", "issues": [{"type": "knowledge_leak", "quote": "你是最早的那一批", "issue": "知识状态：「老周是初代霜蚀者」只有老周自己知晓；陆知雨既不知霜蚀者存在，更不该知道老周的身份——需两跳推理才能判定。", "suggestion": ""}]}
+{"id": "tc11", "issues": [{"type": "promise_break", "quote": "我早就告诉过你了，在霜降那天", "issue": "未回收承诺里该承诺仍挂着，正文却宣称已兑现（虚假回收），会导致后续剧情空洞。", "suggestion": ""}, {"type": "ai_flavor", "quote": "他抬起头", "issue": "疑似套话）", "suggestion": ""}]}
+{"id": "tc12", "issues": [{"type": "promise_break", "quote": "铜……能替铁？我从来没听说过", "issue": "第 5 章老周已对沈砚讲过「铜能替铁」，此处主角当新知识接受＝旧信息被抛弃。主类型可判 memory_conflict，属于类型边界案例（不计入必检出，只用于观察判定宽严）。", "suggestion": ""}]}
+{"id": "tc13", "issues": [{"type": "knowledge_leak", "quote": "他不是害怕，而是终于明白了", "issue": "否定对偶「不是X，而是Y」＋比喻收尾升华，是通报里点名的 AI 套路。", "suggestion": ""}]}
+{"id": "tc14", "issues": [{"type": "ai_flavor", "quote": "他缓缓地深吸一口气，指节微微泛白", "issue": "动作生理套话堆砌＋空泛副词（缓缓地/微微/轻轻/若有若无）＋「勾起一抹弧度」。", "suggestion": ""}, {"type": "character", "quote": "她笑了笑", "issue": "疑似腔调不符", "suggestion": ""}, {"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc15", "issues": [{"type": "ai_flavor", "quote": "有些事，不必说破。有些路，只能一个人走。", "issue": "两处及以上同构并置（三个「他把…」）＋短句独立成句当金句＋格言式段落收尾。表面文笔通顺，是最容易漏检的一类。", "suggestion": ""}]}
+{"id": "tc16", "issues": []}
+{"id": "tc17", "issues": [{"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc18", "issues": [{"type": "timeline", "quote": "第二天", "issue": "疑似时间跳跃", "suggestion": ""}]}
+{"id": "tc19", "issues": [{"type": "setting", "quote": "他从怀里掏出一柄铁剑抵住门框", "issue": "疑似与设定冲突（原文不存在）", "suggestion": ""}]}
+{"id": "tc20", "issues": []}
