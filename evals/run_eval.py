@@ -301,6 +301,52 @@ def load_cases() -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+def assert_metrics(m: dict, expect: dict) -> None:
+    """按预期值逐项核对指标（用于确定性自检：gold 必须全 1.0，noisy 必须等于既定基线）。
+
+    自检口径是确定性的（噪声注入带固定 seed），所以用精确相等——任何漂移都该让门禁响。
+    真实模型输出有抖动，不能用这个，见 assert_thresholds。
+    """
+    bad = {k: (m.get(k), v) for k, v in expect.items() if m.get(k) != v}
+    if bad:
+        detail = "\n".join(f"  {k}: 实际 {a!r} ≠ 预期 {e!r}" for k, (a, e) in bad.items())
+        raise SystemExit(f"指标与预期不符：\n{detail}")
+
+
+def assert_thresholds(m: dict, minimums: dict | None = None,
+                      maximums: dict | None = None) -> str:
+    """按上下限核对指标，用于真实模型门禁。
+
+    为什么不复用 assert_metrics：真实模型不是确定性的，同一条 prompt 两次跑
+    recall 会差几个点，精确相等必然误红。这里只守「不能更差」的地板。
+
+    maximums 存在的理由：clean_fp_rate（干净章平均误报条数）越低越好——只设下限
+    会漏掉「把所有章都报一遍」这种最典型的坏模型。
+    """
+    minimums, maximums = minimums or {}, maximums or {}
+    bad: list[str] = []
+    remarks: list[str] = []
+    for k, floor in minimums.items():
+        actual = m.get(k)
+        if actual is None:
+            bad.append(f"  {k}: 指标不存在（预期下限 {floor}）")
+        elif actual < floor:
+            bad.append(f"  {k}: 实际 {actual} < 下限 {floor}")
+        else:
+            remarks.append(f"{k}={actual} ≥ {floor}")
+    for k, ceil in maximums.items():
+        actual = m.get(k)
+        if actual is None:
+            bad.append(f"  {k}: 指标不存在（预期上限 {ceil}）")
+        elif actual > ceil:
+            bad.append(f"  {k}: 实际 {actual} > 上限 {ceil}")
+        else:
+            remarks.append(f"{k}={actual} ≤ {ceil}")
+    if bad:
+        raise SystemExit("指标未达门禁要求：\n" + "\n".join(bad))
+    return "，".join(remarks)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="一致性审校评测 runner")
     ap.add_argument("--provider", choices=["gold", "noisy", "api"], default="gold")
@@ -319,6 +365,14 @@ def main() -> None:
     ap.add_argument("--judge-model", default=None)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--tag", default=None, help="本次运行的标签，用于对比表")
+    ap.add_argument("--expect-json", default=None,
+                    help='门禁用（确定性自检）：预期指标 JSON，如 \'{"recall":1.0,"precision":1.0}\'，不符则非零退出')
+    ap.add_argument("--min-json", default=None,
+                    help='门禁用（真实模型）：指标下限 JSON，如 \'{"recall":0.6,"precision":0.45}\'，'
+                         '任一低于下限则非零退出；指标名写错/缺失也判失败，避免静默放行')
+    ap.add_argument("--max-json", default=None,
+                    help='门禁用（真实模型）：指标上限 JSON，如 \'{"clean_fp_rate":0.8}\'，'
+                         '任一超出上限则非零退出（越小越好的指标用这个，如误报率）')
     args = ap.parse_args()
 
     cases = load_cases()
@@ -372,6 +426,18 @@ def main() -> None:
     print(report)
     print(f"报告已写入：{run_dir / 'report.md'}")
     print(f"对比表：{summary}")
+
+    if args.expect_json:
+        assert_metrics(m, json.loads(args.expect_json))
+        print("指标符合预期 ✓")
+
+    if args.min_json or args.max_json:
+        detail = assert_thresholds(
+            m,
+            json.loads(args.min_json) if args.min_json else None,
+            json.loads(args.max_json) if args.max_json else None,
+        )
+        print(f"指标达到门禁要求 ✓（{detail}）")
 
 
 if __name__ == "__main__":

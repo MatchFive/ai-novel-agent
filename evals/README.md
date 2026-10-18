@@ -208,20 +208,43 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r evals/requirements-eval.txt
+
+      # ① 尺子自检：确定性，必须精确等于基线
       - name: 尺子自检（无 Key，必须过）
         run: |
           cd evals
           python datasets/build_dataset.py
-          python run_eval.py --provider gold --tag ci-selfcheck
-      # 有 Key 时再跑真评测，并用阈值卡住回归
-      - name: 真评测
+          python run_eval.py --provider gold --tag ci-gold \
+            --expect-json '{"recall":1.0,"precision":1.0,"clean_fp_rate":0.0}'
+
+      # ② 真评测：只守地板，不追精确值
+      - name: 真评测（有 Key 才跑）
         if: env.EVAL_API_KEY != ''
         env: { EVAL_API_KEY: "${{ secrets.EVAL_API_KEY }}" }
-        run: cd evals && python run_eval.py --provider api --model ${{ vars.EVAL_MODEL }} --tag ci-real
+        run: |
+          cd evals
+          python run_eval.py --provider api --model ${{ vars.EVAL_MODEL }} --tag ci-real \
+            --min-json '{"recall":0.6,"precision":0.45}' \
+            --max-json '{"clean_fp_rate":0.8}'
 ```
 
-门禁阈值建议（先用基线分数 - 容差，别一上来就卡死）：
-`must_detect_recall ≥ 基线 - 0.05` 且 `干净章误报率 ≤ 基线 + 0.3`。
+三个门禁参数，按「指标是确定性的吗」来选，不是按方便选：
+
+| 参数 | 语义 | 用在哪 |
+|---|---|---|
+| `--expect-json` | 必须**等于** | 只给确定性自检（gold / noisy 固定 seed） |
+| `--min-json` | 不得**低于** | 越高越好的指标（recall / precision） |
+| `--max-json` | 不得**高于** | 越低越好的指标（`clean_fp_rate`） |
+
+两个容易踩的点：
+
+1. **别拿 `--expect-json` 卡真实模型**。同一条 prompt 跑两次 recall 能差几个点，
+   精确相等必然误红，最后的结果是团队把门禁关掉。
+2. **误报率必须走上限**。只卡召回下限，会漏掉「把每一章都报一遍」这种模型——
+   它召回 100%，但产品上完全不可用。
+
+地板值取法：取实测基线再留抖动余量（本项目 20 条集：recall 0.73 / precision 0.55 /
+干净章误报 0.4，地板定在 0.60 / 0.45 / ≤0.8）。**地板是「再差不能合」的线，不是目标值。**
 
 ---
 
