@@ -1,4 +1,4 @@
-tag,provider,strategy,model,recall,must_recall,weighted_recall,precision,f1,type_accuracy,clean_fp_rate,gold,pred,calls,latency_p50
-00-gold-selfcheck,gold,single,-,1.0,1.0,1.0,1.0,1.0,1.0,0.0,15,15,0,
-01-noisy-low,noisy,single,-,0.8667,0.8571,0.8824,0.5652,0.6842,0.7692,0.6,15,23,0,
-02-noisy-high,noisy,single,-,0.6,0.6429,0.6176,0.2727,0.375,0.2222,0.8,15,33,0,
+tag,provider,strategy,model,recall,must_recall,weighted_recall,precision,f1,type_accuracy,clean_fp_rate,gold,pred,calls,latency_p50,coverage
+00-gold-selfcheck,gold,single,-,1.0,1.0,1.0,1.0,1.0,1.0,0.0,15,15,0,,1.0
+01-noisy-low,noisy,single,-,0.8667,0.8571,0.8824,0.5652,0.6842,0.7692,0.6,15,23,0,,1.0
+02-noisy-high,noisy,single,-,0.6,0.6429,0.6176,0.2727,0.375,0.2222,0.8,15,33,0,,1.0

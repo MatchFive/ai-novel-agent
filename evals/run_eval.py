@@ -233,32 +233,76 @@ def preds_noisy(cases: list[dict], args) -> dict[str, list[dict]]:
     return out
 
 
+def call_llm_retry(prompt: str, *, base_url: str, api_key: str, model: str,
+                   temperature: float = 0.1, timeout: int = 120,
+                   retries: int = 2, on_retry=None) -> tuple[str, dict]:
+    """带指数退避的重试包装。
+
+    为什么必须有：一次 120s 读超时会把整条 case 变成「没有预测」，而原实现把
+    「没有预测」当成「模型报出 0 条」。落在干净章上就是白捡一个满分，落在 bug 章
+    上就是凭空多一次漏检。网络抖动不该被算成模型能力，所以先重试。
+    """
+    last: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            return call_llm(prompt, base_url=base_url, api_key=api_key, model=model,
+                            temperature=temperature, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            last = e
+            # 4xx 是配置/请求问题（key 无效、模型名错、参数不支持），重试只是白等；
+            # 408（超时）与 429（限流）例外，它们本质是暂时性的。
+            if e.code not in (408, 429) and 400 <= e.code < 500:
+                raise
+            if attempt < retries:
+                if on_retry:
+                    on_retry(attempt + 1, e)
+                time.sleep(2 ** attempt)
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+            last = e
+            if attempt < retries:
+                if on_retry:
+                    on_retry(attempt + 1, e)
+                time.sleep(2 ** attempt)      # 1s, 2s
+    raise last  # type: ignore[misc]
+
+
 def preds_api(cases: list[dict], args) -> tuple[dict[str, list[dict]], dict]:
     template = load_prompt_template()
     api_key = args.api_key or os.environ.get("EVAL_API_KEY") or os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise SystemExit("缺少 API Key：传 --api-key 或设环境变量 EVAL_API_KEY / OPENAI_API_KEY")
     out: dict[str, list[dict]] = {}
-    stats = {"calls": 0, "latency": [], "prompt_tokens": 0, "completion_tokens": 0, "errors": 0}
+    stats = {"calls": 0, "retries": 0, "latency": [], "prompt_tokens": 0,
+             "completion_tokens": 0, "errors": 0, "failed_cases": []}
     for c in cases:
         prompt = render_prompt(c, template)
         runs: list[list[dict]] = []
         repeats = args.repeat if args.strategy == "self_consistency" else 1
         for _ in range(repeats):
             try:
-                text, meta = call_llm(prompt, base_url=args.base_url, api_key=api_key,
-                                      model=args.model, temperature=args.temperature)
+                text, meta = call_llm_retry(
+                    prompt, base_url=args.base_url, api_key=api_key,
+                    model=args.model, temperature=args.temperature,
+                    retries=args.retries,
+                    on_retry=lambda n, e: stats.__setitem__("retries", stats["retries"] + 1))
                 stats["calls"] += 1
                 stats["latency"].append(meta["latency"])
                 stats["prompt_tokens"] += meta.get("prompt_tokens") or 0
                 stats["completion_tokens"] += meta.get("completion_tokens") or 0
                 runs.append(parse_issues(text))
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
-                stats["errors"] += 1
-                print(f"  ! {c['id']} 调用失败：{e}")
-                runs.append([])
+            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+                print(f"  ! {c['id']} 调用失败（重试 {args.retries} 次后仍失败）：{e}")
+                runs.append(None)          # None = 没有预测，与「报出 0 条」严格区分
 
-        issues = vote_issues(runs) if args.strategy == "self_consistency" else (runs[0] if runs else [])
+        # self_consistency 只对成功的轮次投票；全部失败才算这条 case 未覆盖
+        good = [r for r in runs if r is not None]
+        if not good:
+            stats["errors"] += 1
+            stats["failed_cases"].append(c["id"])
+            print(f"  {c['id']}: 未覆盖（不计入指标）")
+            continue
+
+        issues = vote_issues(good) if args.strategy == "self_consistency" else good[0]
         issues = dedupe_issues(issues)
 
         if args.strategy == "verify" and issues:
@@ -357,6 +401,8 @@ def main() -> None:
     ap.add_argument("--api-key", default=None)
     ap.add_argument("--temperature", type=float, default=0.1)
     ap.add_argument("--repeat", type=int, default=3)
+    ap.add_argument("--retries", type=int, default=2,
+                    help="单次调用失败后的重试次数（指数退避 1s/2s）。网络抖动不该算成模型能力")
     ap.add_argument("--drop", type=float, default=0.25, help="noisy 模式：每条 gold 被漏掉的概率")
     ap.add_argument("--noise", type=float, default=0.35, help="noisy 模式：每个 case 注入多余问题的概率")
     ap.add_argument("--type-error", type=float, default=0.2, help="noisy 模式：命中的问题被判错类型的概率")
@@ -390,7 +436,9 @@ def main() -> None:
         print(f"真实调用：model={args.model} strategy={args.strategy}")
         preds, stats = preds_api(cases, args)
 
-    m = compute_metrics(cases, preds, judge=judge) if judge else compute_metrics(cases, preds)
+    m = compute_metrics(cases, preds, judge=judge,
+                        skip_ids=set(stats.get("failed_cases") or [])) if judge \
+        else compute_metrics(cases, preds, skip_ids=set(stats.get("failed_cases") or []))
     tag = args.tag or f"{args.provider}-{args.strategy}" + ("-judge" if judge else "")
     run_dir = RESULTS / tag
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -406,21 +454,33 @@ def main() -> None:
             "model": args.model if args.provider == "api" else "-"}
     if stats:
         meta["调用次数"] = stats.get("calls")
+        if stats.get("retries"):
+            meta["重试次数"] = stats["retries"]
         meta["延迟 p50 / max (s)"] = f"{stats.get('latency_p50')} / {stats.get('latency_max')}"
         meta["token 合计（in/out）"] = f"{stats.get('prompt_tokens')} / {stats.get('completion_tokens')}"
         meta["失败调用"] = stats.get("errors")
+        if stats.get("failed_cases"):
+            meta["未覆盖 case"] = ", ".join(stats["failed_cases"])
     report = format_report(m, title=f"一致性审校评测报告 · {tag}", meta=meta)
     (run_dir / "report.md").write_text(report, encoding="utf-8")
 
     # 汇总表：每次运行追加一行，便于横向对比不同 prompt / 策略
     summary = RESULTS / "summary.csv"
-    header = "tag,provider,strategy,model,recall,must_recall,weighted_recall,precision,f1,type_accuracy,clean_fp_rate,gold,pred,calls,latency_p50\n"
+    header = ("tag,provider,strategy,model,recall,must_recall,weighted_recall,precision,f1,"
+              "type_accuracy,clean_fp_rate,gold,pred,calls,latency_p50,coverage\n")
     if not summary.exists():
         summary.write_text(header, encoding="utf-8")
+    else:
+        # 旧表没有 coverage 列：补 1.0（这些运行确实没有失败 case），否则列会错位
+        lines = [ln for ln in summary.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and "coverage" not in lines[0]:
+            migrated = [lines[0] + ",coverage"] + [ln + ",1.0" for ln in lines[1:]]
+            summary.write_text("\n".join(migrated) + "\n", encoding="utf-8")
     with summary.open("a", encoding="utf-8") as f:
         f.write(f"{tag},{args.provider},{args.strategy},{meta['model']},{m['recall']},{m['must_detect_recall']},"
                 f"{m['weighted_recall']},{m['precision']},{m['f1']},{m['type_accuracy']},{m['clean_fp_rate']},"
-                f"{m['gold_total']},{m['pred_total']},{stats.get('calls', 0)},{stats.get('latency_p50', '')}\n")
+                f"{m['gold_total']},{m['pred_total']},{stats.get('calls', 0)},{stats.get('latency_p50', '')},"
+                f"{m['coverage']}\n")
 
     print()
     print(report)

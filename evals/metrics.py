@@ -112,8 +112,14 @@ def _safe_div(a: float, b: float) -> float:
 
 
 def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
-                    judge=None, collect_details: bool = True) -> dict:
-    """cases: 评测集（含 gold_issues）；preds_by_id: {case_id: [issue, ...]}"""
+                    judge=None, collect_details: bool = True,
+                    skip_ids: set[str] | None = None) -> dict:
+    """cases: 评测集（含 gold_issues）；preds_by_id: {case_id: [issue, ...]}
+
+    skip_ids：调用失败、没有预测的 case。**必须排除出分母，不能当成「报出 0 条」**——
+    落在干净章上会把一次超时算成「完美通过」，落在 bug 章上会把网络故障算成漏检，
+    两个方向都在污染数字。排除后单独用 coverage 表达「这次评测覆盖了多少」。
+    """
     tp = fp = fn = 0
     tp_must = fn_must = 0
     type_ok = 0
@@ -122,11 +128,23 @@ def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
     clean_fp_total = 0
     per_type = {t: {"gold": 0, "hit": 0, "reported": 0, "type_ok": 0} for t in ISSUE_TYPES}
     details: list[dict] = []
+    skip_ids = skip_ids or set()
+    errored: list[str] = []
 
     SEV_W = {"critical": 3, "major": 2, "minor": 1}
 
     for case in cases:
         cid = case["id"]
+        if cid in skip_ids:
+            errored.append(cid)
+            if collect_details:
+                details.append({
+                    "id": cid, "category": case["category"], "difficulty": case["difficulty"],
+                    "type_focus": case.get("type_focus"), "errored": True,
+                    "gold": len(case.get("gold_issues") or []), "pred": 0, "hit": 0,
+                    "missed": [], "false_positives": [], "type_mismatch": [],
+                })
+            continue
         golds = case.get("gold_issues") or []
         preds = preds_by_id.get(cid) or []
         r = match_issues(preds, golds, judge=judge)
@@ -189,6 +207,12 @@ def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
 
     return {
         "cases": len(cases),
+        "covered_cases": len(cases) - len(errored),
+        "errored_cases": len(errored),
+        "errored_ids": errored,
+        # 覆盖率：指标建立在多少比例的有效样本上。低于 1.0 时所有指标都只能当参考，
+        # 因为失败的 case 既可能藏着漏检，也可能藏着误报。
+        "coverage": _safe_div(len(cases) - len(errored), len(cases)),
         "gold_total": tp + fn,
         "pred_total": tp + fp,
         "tp": tp, "fp": fp, "fn": fn,
@@ -227,9 +251,16 @@ def format_report(m: dict, title: str = "一致性审校评测报告", meta: dic
               f"| F1 | {m['f1']:.3f} | |",
               f"| 类型判定准确率 | {m['type_accuracy']:.2%} | 命中里 type 判对的比例 |",
               f"| 干净章误报率 | **{m['clean_fp_rate']:.2f} 条/篇** | {m['clean_cases']} 篇干净/诱饵章上平均报出的假问题数 |",
+              f"| 覆盖率 | **{m['coverage']:.0%}** | {m['covered_cases']}/{m['cases']} 条 case 有有效预测"
+              + (f"；{m['errored_cases']} 条未覆盖，已排除出全部分母" if m["errored_cases"] else "") + " |",
               "",
               f"（gold {m['gold_total']} 条 / 模型报出 {m['pred_total']} 条：TP={m['tp']} FP={m['fp']} FN={m['fn']}）",
               ""]
+
+    if m["errored_cases"]:
+        lines += [f"> ⚠️ 覆盖率 {m['coverage']:.0%}：{', '.join(f'`{i}`' for i in m['errored_ids'])} "
+                  f"调用失败，未计入任何指标。这些 case 上真实表现未知，"
+                  f"`clean_fp_rate` 等指标不能与全量运行直接比较。", ""]
 
     lines += ["## 分类型表现", "",
               "| 类型 | gold | 命中 | 检出率 | 报出 | 类型判定准确率 |", "|---|---|---|---|---|---|"]
@@ -242,12 +273,16 @@ def format_report(m: dict, title: str = "一致性审校评测报告", meta: dic
                   "| case | 类别 | 难度 | gold | 报出 | 命中 | 漏检 | 误报 | 类型错配 |",
                   "|---|---|---|---|---|---|---|---|---|"]
         for d in m["details"]:
+            if d.get("errored"):
+                lines.append(f"| {d['id']} | {d['category']} | {d['difficulty']} | {d['gold']} | "
+                             f"**失败** | - | - | - | 调用失败，未计入指标 |")
+                continue
             lines.append(
                 f"| {d['id']} | {d['category']} | {d['difficulty']} | {d['gold']} | {d['pred']} | "
                 f"{d['hit']} | {len(d['missed'])} | {len(d['false_positives'])} | "
                 f"{('; '.join(d['type_mismatch']) or '-')} |")
 
-        missed = [d for d in m["details"] if d["missed"]]
+        missed = [d for d in m["details"] if d.get("missed")]
         if missed:
             lines += ["", "### 漏检的 gold", ""]
             for d in missed:
