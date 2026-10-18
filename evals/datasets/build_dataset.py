@@ -1,4 +1,9 @@
-"""构建一致性审校评测集 v1（20 条）。
+"""构建一致性审校评测集 v1.1（20 条）。
+
+v1.1（run #5 复盘后修订）：ai_flavor 是「密集型」问题——同一章里往往有多处独立套路，
+v1 每条 case 只标 1 处 gold，导致模型多报的每一处真问题都被记成误报（precision 被口径
+压成下界）。v1.1 为密集 case 补标全部可独立取证的套路实例（severity=minor、不计必检出，
+避免改变必检出分母），并给 tc14 主 gold 补 acceptable_quotes 多锚点。
 
 产出：
   datasets/context_base.json      —— 共享世界上下文（与 check_service._scan_context 的 5 个变量同名）
@@ -12,6 +17,9 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from metrics import longest_common_run, norm_text  # noqa: E402
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -125,6 +133,11 @@ CASES: list[dict] = [
             "type": "character", "quote": "沈砚哈哈大笑，一巴掌拍在陆知雨肩上",
             "severity": "major", "must_detect": True,
             "note": "与角色卡「克制、寡言、短句冷嘲」正相反，人物腔调崩坏。",
+        }, {
+            "type": "ai_flavor", "quote": "他向来最爱热闹，说话像连珠炮，一句接一句不带停的。",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：段末总结性人设复述（「向来最爱热闹」）与「连珠炮」比喻同构并置，"
+                    "是独立的 ai_flavor 实例（run #5 实测模型报出、v1 口径下被记成误报）。",
         }],
     },
     {
@@ -229,6 +242,14 @@ CASES: list[dict] = [
             "type": "ai_flavor", "quote": "他不是害怕，而是终于明白了",
             "severity": "major", "must_detect": True,
             "note": "否定对偶「不是X，而是Y」＋比喻收尾升华，是通报里点名的 AI 套路。",
+        }, {
+            "type": "ai_flavor", "quote": "霜城的夜不是冷，而是一种漫长的告别",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：同一否定对偶在同段复现（第 2 处）。",
+        }, {
+            "type": "ai_flavor", "quote": "一切都安静了",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：短句独立成句收束段落，做总结升华（run #5 实测模型报出、v1 口径下被记成误报）。",
         }],
     },
     {
@@ -241,6 +262,19 @@ CASES: list[dict] = [
             "type": "ai_flavor", "quote": "他缓缓地深吸一口气，指节微微泛白",
             "severity": "major", "must_detect": True,
             "note": "动作生理套话堆砌＋空泛副词（缓缓地/微微/轻轻/若有若无）＋「勾起一抹弧度」。",
+            "acceptable_quotes": ["指节微微泛白"],
+        }, {
+            "type": "ai_flavor", "quote": "他缓缓地抬起头，缓缓地看向窗外",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：同一修饰语「缓缓地」章内复现三次（深吸气/抬起头/看向窗外），构成机械节奏。",
+        }, {
+            "type": "ai_flavor", "quote": "眼底深处的情绪几不可察地翻涌着",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：空泛副词「几不可察地」修饰笼统情绪词。",
+        }, {
+            "type": "ai_flavor", "quote": "嘴角勾起一抹若有若无的弧度",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：否定对偶「若X若无X」套在「勾起弧度」套路动作上。",
         }],
     },
     {
@@ -255,6 +289,14 @@ CASES: list[dict] = [
             "severity": "major", "must_detect": True,
             "note": "两处及以上同构并置（三个「他把…」）＋短句独立成句当金句＋格言式段落收尾。"
                     "表面文笔通顺，是最容易漏检的一类。",
+        }, {
+            "type": "ai_flavor", "quote": "他把怀表放回口袋。他把围巾拉高一点。他把脚步放慢半拍。",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：三连「他把…」同构并置，是可独立取证的确定性套路。",
+        }, {
+            "type": "ai_flavor", "quote": "人心也慢慢安静下来了",
+            "severity": "minor", "must_detect": False,
+            "note": "v1.1 补标：空泛副词「慢慢」堆砌氛围（run #5 实测模型报出、v1 口径下被记成误报）。",
         }],
     },
     # ---------------- clean：测误报 ----------------
@@ -330,6 +372,20 @@ def main() -> None:
             assert c["gold_issues"], c["id"]
         else:
             assert not c["gold_issues"], c["id"]
+
+    # gold provider 会把每条 gold 原样当预测，而 compute_metrics 会折叠「共享 ≥8 字
+    # 连续片段」的预测——如果同一 case 的两条 gold 互相高度重叠，gold 自检就会假红。
+    # 在这里挡住，保证未来补标时立刻暴露。
+    for c in CASES:
+        quotes = [g["quote"] for g in c["gold_issues"]]
+        for i in range(len(quotes)):
+            for j in range(i + 1, len(quotes)):
+                a, b = norm_text(quotes[i]), norm_text(quotes[j])
+                assert longest_common_run(a, b) < 8, \
+                    f"{c['id']} 两条 gold 共享 ≥8 字连续片段，gold 自检会被预测折叠误伤：" \
+                    f"「{quotes[i]}」 vs 「{quotes[j]}」"
+                assert not (len(a) >= 4 and a in b) and not (len(b) >= 4 and b in a), \
+                    f"{c['id']} 两条 gold 互相包含：「{quotes[i]}」 vs 「{quotes[j]}」"
 
     (HERE / "context_base.json").write_text(
         json.dumps(SHARED, ensure_ascii=False, indent=2), encoding="utf-8")

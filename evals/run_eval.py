@@ -414,7 +414,7 @@ def main() -> None:
     ap.add_argument("--expect-json", default=None,
                     help='门禁用（确定性自检）：预期指标 JSON，如 \'{"recall":1.0,"precision":1.0}\'，不符则非零退出')
     ap.add_argument("--min-json", default=None,
-                    help='门禁用（真实模型）：指标下限 JSON，如 \'{"recall":0.6,"precision":0.45}\'，'
+                    help='门禁用（真实模型）：指标下限 JSON，如 \'{"recall":0.6,"precision":0.4}\'，'
                          '任一低于下限则非零退出；指标名写错/缺失也判失败，避免静默放行')
     ap.add_argument("--max-json", default=None,
                     help='门禁用（真实模型）：指标上限 JSON，如 \'{"clean_fp_rate":0.8}\'，'

@@ -9,6 +9,17 @@ quote 也可能只截取半句。这里用两级匹配：
 
 匹配采用「相似度降序贪心一对一」：避免一条 gold 被多条预测重复认领（会虚高 recall），
 也避免一条预测同时认领多条 gold（会虚高 precision）。
+
+两个已知的口径坑（run #5 复盘发现，都有真实案例）：
+
+  1. gold 引文边界：模型报「指节微微泛白，喉结轻轻滚动了一下」，gold 是
+     「他缓缓地深吸一口气，指节微微泛白」——共享 6 字但互不包含，同一处正确判断
+     被同时记 1 次漏检 + 1 次误报（双重惩罚）。解法是 gold 支持 acceptable_quotes
+     多锚点（dataset 侧修），而不是放宽全局阈值（会把真正的误报也放进来）。
+
+  2. 同一处被报两次：模型对同一句话报了两条（一条命中，一条 quote 边界更宽），
+     贪心一对一匹配后多出来的那条变成 FP。解法是匹配前把 quote 高重叠的预测
+     折叠成一条（collapse_duplicate_preds），它们本来就是同一个发现的不同说法。
 """
 from __future__ import annotations
 
@@ -50,6 +61,45 @@ def quote_similarity(a: str | None, b: str | None) -> float:
     return SequenceMatcher(None, na, nb).ratio()
 
 
+def longest_common_run(a: str, b: str) -> int:
+    """两段归一化文本的最长公共连续片段长度（字符数）。"""
+    if not a or not b:
+        return 0
+    m = SequenceMatcher(None, a, b, autojunk=False)
+    return m.find_longest_match(0, len(a), 0, len(b)).size
+
+
+def collapse_duplicate_preds(pred_issues: list[dict]) -> tuple[list[dict], int]:
+    """预测侧折叠：指向同一处原文的多条预测视为「同一处的重复报」，只保留先出现的一条。
+
+    判定（针对中文片段，比相似度阈值更稳）：两条 quote 归一化后——
+      ① 一方完整包含另一方（≥4 字），或
+      ② 最长公共连续片段 ≥ 8 字
+    即视为同一处。8 字的依据：中文里两处「不同的问题」几乎不可能共享 8 字以上连续
+    原文（run #5 实测：tc06 同句两报共享 11 字该折叠，tc14 同段四处套路最长共享 4 字
+    不该折叠，恰好被这条线分开）。
+    返回 (折叠后的预测, 被折叠掉的条数)。
+    """
+    kept: list[dict] = []
+    dropped = 0
+    for it in pred_issues:
+        if not isinstance(it, dict):
+            continue
+        na = norm_text(it.get("quote"))
+        dup = False
+        for k in kept:
+            nk = norm_text(k.get("quote"))
+            if (len(na) >= 4 and na in nk) or (len(nk) >= 4 and nk in na) \
+                    or longest_common_run(na, nk) >= 8:
+                dup = True
+                break
+        if dup:
+            dropped += 1
+        else:
+            kept.append(it)
+    return kept, dropped
+
+
 # ---------------------------------------------------------------------------
 # 两级匹配
 # ---------------------------------------------------------------------------
@@ -65,8 +115,11 @@ def match_issues(pred_issues: list[dict], gold_issues: list[dict],
 
     candidates: list[tuple[float, int, int, str]] = []
     for gi, g in enumerate(golds):
+        anchors = [g.get("quote")] + list(g.get("acceptable_quotes") or [])
+        anchors = [a for a in anchors if a]
         for pi, p in enumerate(preds):
-            sim = quote_similarity(p.get("quote"), g.get("quote"))
+            # 多锚点取最高相似度：任一锚点对上即算命中（锚点是「同一问题」的别名，不是放宽）
+            sim = max((quote_similarity(p.get("quote"), a) for a in anchors), default=0.0)
             src = "quote"
             if sim < QUOTE_MATCH_THRESHOLD and judge is not None:
                 j = judge(p, g)
@@ -126,6 +179,7 @@ def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
     weighted_hit = weighted_total = 0.0
     clean_cases = clean_fp = 0          # 干净章 / 诱饵章上的误报
     clean_fp_total = 0
+    deduped_total = 0                   # 被折叠的「同一处重复报」
     per_type = {t: {"gold": 0, "hit": 0, "reported": 0, "type_ok": 0} for t in ISSUE_TYPES}
     details: list[dict] = []
     skip_ids = skip_ids or set()
@@ -146,7 +200,9 @@ def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
                 })
             continue
         golds = case.get("gold_issues") or []
-        preds = preds_by_id.get(cid) or []
+        raw_preds = preds_by_id.get(cid) or []
+        preds, deduped = collapse_duplicate_preds(raw_preds)
+        deduped_total += deduped
         r = match_issues(preds, golds, judge=judge)
 
         hits = len(r["pairs"])
@@ -215,6 +271,7 @@ def compute_metrics(cases: list[dict], preds_by_id: dict[str, list[dict]],
         "coverage": _safe_div(len(cases) - len(errored), len(cases)),
         "gold_total": tp + fn,
         "pred_total": tp + fp,
+        "deduped_reports": deduped_total,
         "tp": tp, "fp": fp, "fn": fn,
         "precision": precision,
         "recall": recall,
@@ -254,7 +311,9 @@ def format_report(m: dict, title: str = "一致性审校评测报告", meta: dic
               f"| 覆盖率 | **{m['coverage']:.0%}** | {m['covered_cases']}/{m['cases']} 条 case 有有效预测"
               + (f"；{m['errored_cases']} 条未覆盖，已排除出全部分母" if m["errored_cases"] else "") + " |",
               "",
-              f"（gold {m['gold_total']} 条 / 模型报出 {m['pred_total']} 条：TP={m['tp']} FP={m['fp']} FN={m['fn']}）",
+              f"（gold {m['gold_total']} 条 / 模型报出 {m['pred_total']} 条：TP={m['tp']} FP={m['fp']} FN={m['fn']}"
+              + (f"；折叠重复报 {m['deduped_reports']} 条" if m.get("deduped_reports") else "") + "）",
+              "（匹配口径：gold 支持多取证锚点 acceptable_quotes；同一处被多次报出只计一次）",
               ""]
 
     if m["errored_cases"]:

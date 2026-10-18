@@ -52,7 +52,7 @@ def upload_dataset(client, force: bool = False):
     except StopIteration:
         ds = client.create_dataset(
             dataset_name=DATASET_NAME,
-            description="AI 小说一致性审校评测集 v1：15 条人工种 bug + 3 条干净章 + 2 条诱饵章，"
+            description="AI 小说一致性审校评测集 v1.1：15 条人工种 bug 章（23 处 gold）+ 3 条干净章 + 2 条诱饵章，"
                         "覆盖 timeline / setting / character / memory_conflict / knowledge_leak / "
                         "promise_break / ai_flavor 七类问题。",
         )
